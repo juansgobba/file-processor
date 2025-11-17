@@ -10,7 +10,7 @@ export class FileController {
     this._fileService = fileService;
   }
 
-  @Get("process")
+  @Get("/process")
   async processFile() {
     this._fileService.processFile();
   }
