@@ -15,6 +15,9 @@ export const AppDataSource = new DataSource({
   migrations: ["src/file/infrastructure/repositories/SQLServer/migrations/*.ts"],
   synchronize: false,
   logging: false,
+  options: {
+    trustServerCertificate: true,
+  },
 });
 
 // to initialize initial connection with the database, register all entities

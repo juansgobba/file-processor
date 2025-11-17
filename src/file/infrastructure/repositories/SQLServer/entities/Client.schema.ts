@@ -24,13 +24,13 @@ export class Client {
   @Column({ type: "bit", nullable: true })
   isObligateSubject: boolean;
 
-  @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
+  @CreateDateColumn({ type: "datetime2", default: () => "CURRENT_TIMESTAMP" })
   createdAt: Date;
 
-  @UpdateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
+  @UpdateDateColumn({ type: "datetime2", default: () => "CURRENT_TIMESTAMP" })
   updatedAt: Date;
 
-  @DeleteDateColumn({ type: "timestamp" })
+  @DeleteDateColumn({ type: "datetime2" })
   deletedAt: Date;
 
   constructor() {
