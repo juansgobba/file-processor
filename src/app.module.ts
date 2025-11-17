@@ -2,10 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import TYPES from './types';
 import { AppController } from './app.controller';
-import { FileController } from './file/infrastructure/controllers/FileController';
-import { FileService } from './file/application/services/FileService';
-import { SQLServerRepository } from './file/infrastructure/repositories/SQLServer/SQLServerRepository';
-import { entities } from './file/infrastructure/repositories/SQLServer/entities/_index';
+import { FileModule } from './file/file.module';
 
 @Module({
   imports: [
@@ -20,18 +17,9 @@ import { entities } from './file/infrastructure/repositories/SQLServer/entities/
       autoLoadEntities: true,
       synchronize: false,
     }),
-    TypeOrmModule.forFeature([...entities])
+    FileModule,
   ],
-  controllers: [AppController, FileController],
-  providers: [
-    {
-      provide: TYPES.IFileService,
-      useClass: FileService
-    },
-    {
-      provide: TYPES.ISQLServerRepository,
-      useClass: SQLServerRepository
-    }
-  ],
+  controllers: [AppController],
+  providers: [],
 })
 export class AppModule {}
