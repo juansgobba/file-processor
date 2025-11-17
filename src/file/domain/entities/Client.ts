@@ -4,7 +4,7 @@ export class Client {
   id: number;
   guid: string;
   fullName: string;
-  dni: string;
+  dni: number;
   ingressAt: Date;
   isPEP: boolean;
   isObligateSubject?: boolean;

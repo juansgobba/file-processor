@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Repository, In } from "typeorm"; // Importar 'In' para posibles usos futuros, aunque no directamente en saveMany
 import { ISQLServerRepository } from "@/file/domain/interfaces/ISQLServerRepository";
 import { Client as ClientEntity } from "@/file/domain/entities/Client";
 import { Client as ClientSchema } from "./entities/Client.schema";
@@ -9,16 +9,28 @@ import { Client as ClientSchema } from "./entities/Client.schema";
 export class SQLServerRepository implements ISQLServerRepository {
   constructor(
     @InjectRepository(ClientSchema)
-    private readonly _clientEntity: Repository<ClientSchema>,
+    private readonly _clientRepository: Repository<ClientSchema>,
   ) {}
 
   async save(clientEntity: ClientEntity): Promise<ClientEntity> {
     try {
       const clientSchema = this.toSchema(clientEntity);
-      const savedClient = await this._clientEntity.save(clientSchema);
+      const savedClient = await this._clientRepository.save(clientSchema);
       return this.toDomain(savedClient);
     } catch (error) {
-      throw new Error();
+      console.error("Error al guardar cliente:", error);
+      throw new Error("Error al guardar cliente en la base de datos.");
+    }
+  }
+
+  async saveMany(clientEntities: ClientEntity[]): Promise<void> {
+    try {
+      const clientSchemas = clientEntities.map((entity) => this.toSchema(entity));
+      // TypeORM maneja la inserción masiva de forma eficiente con .save() cuando se le pasa un array
+      await this._clientRepository.save(clientSchemas, { chunk: 1000 }); // chunk para optimizar la inserción
+    } catch (error) {
+      console.error("Error al guardar múltiples clientes:", error);
+      throw new Error("Error al guardar múltiples clientes en la base de datos.");
     }
   }
 

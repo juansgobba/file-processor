@@ -1,7 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, DeleteDateColumn } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 
-@Entity({ name: "client" })
+@Entity({ name: "clients", schema: `${process.env.DB_SCHEMA}` })
 export class Client {
   @PrimaryGeneratedColumn({ type: "int" })
   id: number;
@@ -9,11 +9,11 @@ export class Client {
   @Column({ type: "uniqueidentifier", unique: true })
   guid: string;
 
-  @Column({ type: "varchar", nullable: false })
+  @Column({ type: "nvarchar", nullable: false })
   fullName: string;
 
   @Column({ type: "bigint", unique: true, nullable: false })
-  dni: string;
+  dni: number;
 
   @Column({ type: "date", nullable: false })
   ingressAt: Date;
