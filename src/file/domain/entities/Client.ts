@@ -5,6 +5,7 @@ export class Client {
   guid: string;
   fullName: string;
   dni: number;
+  status: boolean;
   ingressAt: Date;
   isPEP: boolean;
   isObligateSubject?: boolean;

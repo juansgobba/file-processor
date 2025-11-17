@@ -7,7 +7,7 @@ import { IFileService } from "./IFileService";
 import { ISQLServerRepository } from "@/file/domain/interfaces/ISQLServerRepository";
 import { Client } from "@/file/domain/entities/Client";
 
-const INPUT_FILE_PATH = path.join(process.cwd(), "challenge", "input", "CLIENTES_IN_0425.dat");
+const INPUT_FILE_PATH = path.join(process.cwd(), "CLIENTES_IN_0425.dat");
 const BATCH_SIZE = 1000; // Tamaño del lote para inserciones masivas
 
 @Injectable()
@@ -94,6 +94,9 @@ export class FileService implements IFileService {
       throw new Error(`DNI inválido: "${dni}"`);
     }
     client.dni = parsedDNI;
+
+    // Validación y conversión de Estado
+    client.status = true; // Siempre activo al importar
 
     // Validación y conversión de FechaIngreso
     const dateParts = ingressAt.split('/');

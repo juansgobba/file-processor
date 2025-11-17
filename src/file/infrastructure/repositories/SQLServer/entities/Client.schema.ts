@@ -9,11 +9,14 @@ export class Client {
   @Column({ type: "uniqueidentifier", unique: true })
   guid: string;
 
-  @Column({ type: "nvarchar", nullable: false })
+  @Column({ type: "nvarchar", nullable: false, length: 100 })
   fullName: string;
 
   @Column({ type: "bigint", unique: true, nullable: false })
   dni: number;
+
+  @Column({ type: "nvarchar", nullable: false, length: 10 })
+  status: string;
 
   @Column({ type: "date", nullable: false })
   ingressAt: Date;
