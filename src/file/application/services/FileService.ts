@@ -8,7 +8,7 @@ import { ISQLServerRepository } from "@/file/domain/interfaces/ISQLServerReposit
 import { Client } from "@/file/domain/entities/Client";
 
 const INPUT_FILE_PATH = path.join(process.cwd(), "CLIENTES_IN_0425.dat");
-const BATCH_SIZE = 1000; // Tamaño del lote para inserciones masivas
+const BATCH_SIZE = 200; // Tamaño del lote para inserciones masivas
 
 @Injectable()
 export class FileService implements IFileService {
@@ -22,6 +22,7 @@ export class FileService implements IFileService {
   }
 
   async processFile(): Promise<void> {
+    console.time("inicio");
     // this.logger.log(`Iniciando procesamiento del archivo: ${INPUT_FILE_PATH}`);
 
     if (!fs.existsSync(INPUT_FILE_PATH)) {
@@ -78,6 +79,7 @@ export class FileService implements IFileService {
     }
 
     // this.logger.log(`Procesamiento finalizado. Total de líneas: ${lineNumber}. Registros procesados: ${processedRecords}. Registros con error: ${errorRecords}.`);
+    console.timeEnd("inicio");
   }
 
   private parseClientLine(line: string, lineNumber: number): Client {

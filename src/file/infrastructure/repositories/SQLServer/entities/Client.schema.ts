@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, DeleteDateColumn } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, BeforeInsert } from "typeorm"; // Importar BeforeInsert
 import { v4 as uuidv4 } from "uuid";
 
 @Entity({ name: "clients" })
@@ -36,7 +36,8 @@ export class Client {
   @DeleteDateColumn({ type: "datetime2" })
   deletedAt: Date;
 
-  constructor() {
+  @BeforeInsert()
+  generateGuid() {
     if (!this.guid) {
       this.guid = uuidv4();
     }

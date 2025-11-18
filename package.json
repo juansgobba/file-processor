@@ -20,7 +20,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "typeorm": "typeorm-ts-node-esm",
     "typeorm:migration:generate": "node -r tsconfig-paths/register -r ts-node/register ./node_modules/typeorm/cli.js migration:generate src/file/infrastructure/repositories/SQLServer/migrations/migration -d ormconfig.ts",
-    "typeorm:migration:run": "node -r tsconfig-paths/register -r ts-node/register ./node_modules/typeorm/cli.js migration:run -d ormconfig.ts"
+    "typeorm:migration:run": "node -r tsconfig-paths/register -r ts-node/register ./node_modules/typeorm/cli.js migration:run -d ormconfig.ts",
+    "generate:files": "ts-node generateFiles.ts"
   },
   "dependencies": {
     "@faker-js/faker": "^10.1.0",
