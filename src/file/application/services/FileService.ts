@@ -6,7 +6,7 @@ import TYPES from "@/types";
 import { IFileService } from "./IFileService";
 import { ISQLServerRepository } from "@/file/domain/interfaces/ISQLServerRepository";
 import { Client } from "@/file/domain/entities/Client";
-import { winstonLogger } from "@/file/infrastructure/repositories/logger/winston.logger"; // Importar el logger único
+import { ILogger } from "@/file/domain/interfaces/ILogger"; // Importar la interfaz del logger
 
 const INPUT_FILE_PATH = path.join(process.cwd(), "CLIENTES_IN_0425.dat"); // Ruta del archivo de entrada
 const BATCH_SIZE = 200; // Tamaño del lote para inserciones masivas
@@ -14,22 +14,24 @@ const BATCH_SIZE = 200; // Tamaño del lote para inserciones masivas
 @Injectable()
 export class FileService implements IFileService {
   private readonly _sqlServerRepository: ISQLServerRepository;
-  // private readonly logger = new Logger(FileService.name); // Ya no necesitamos el logger de NestJS directamente aquí
+  private readonly _logger: ILogger; // Inyectar la interfaz del logger
 
   constructor(
     @Inject(TYPES.ISQLServerRepository) sqlServerRepository: ISQLServerRepository,
+    @Inject(TYPES.ILogger) logger: ILogger, // Inyectar el logger
   ) {
     this._sqlServerRepository = sqlServerRepository;
+    this._logger = logger; // Asignar el logger inyectado
   }
 
   async processFile(): Promise<void> {
     const startTime = process.hrtime.bigint();
     const startCpuUsage = process.cpuUsage();
 
-    winstonLogger.info(`Iniciando procesamiento del archivo: ${INPUT_FILE_PATH}`);
+    this._logger.info(`Iniciando procesamiento del archivo: ${INPUT_FILE_PATH}`, FileService.name);
 
     if (!fs.existsSync(INPUT_FILE_PATH)) {
-      winstonLogger.error(`El archivo de entrada no existe: ${INPUT_FILE_PATH}`);
+      this._logger.error(`El archivo de entrada no existe: ${INPUT_FILE_PATH}`, null, FileService.name);
       throw new Error("Archivo de entrada no encontrado.");
     }
 
@@ -69,7 +71,7 @@ export class FileService implements IFileService {
           this.logProgressMetrics(startTime, startCpuUsage, totalProcessedRecords, totalErrorRecords, lineNumber);
         }
       } catch (error) {
-        winstonLogger.error(`Error inesperado al procesar línea ${lineNumber}: ${error.message}`);
+        this._logger.error(`Error inesperado al procesar línea ${lineNumber}: ${error.message}`, error.stack, FileService.name);
         totalErrorRecords++;
       }
     }
@@ -81,7 +83,7 @@ export class FileService implements IFileService {
         totalProcessedRecords += processed;
         totalErrorRecords += errors;
       } catch (error) {
-        winstonLogger.error(`Error inesperado al procesar el lote final: ${error.message}`);
+        this._logger.error(`Error inesperado al procesar el lote final: ${error.message}`, error.stack, FileService.name);
         totalErrorRecords += batch.length; // Si falla el lote final, todos son errores
       }
     }
@@ -99,7 +101,7 @@ export class FileService implements IFileService {
     const uniqueDnisInBatch = new Set<number>();
     const batchWithoutInternalDuplicates = batch.filter(client => {
       if (uniqueDnisInBatch.has(client.dni)) {
-        winstonLogger.warn(`DNI duplicado internamente en el ${batchIdentifier}: ${client.dni}.`);
+        this._logger.warn(`DNI duplicado internamente en el ${batchIdentifier}: ${client.dni}.`, FileService.name);
         errorsInBatch++;
         return false;
       }
@@ -121,7 +123,7 @@ export class FileService implements IFileService {
     const duplicatedInDbRecords = batchWithoutInternalDuplicates.length - finalBatchToSave.length;
 
     if (duplicatedInDbRecords > 0) {
-      winstonLogger.warn(`Se omitieron ${duplicatedInDbRecords} registros con DNI duplicado en la base de datos en el ${batchIdentifier}.`);
+      this._logger.warn(`Se omitieron ${duplicatedInDbRecords} registros con DNI duplicado en la base de datos en el ${batchIdentifier}.`, FileService.name);
       errorsInBatch += duplicatedInDbRecords;
     }
 
@@ -131,7 +133,7 @@ export class FileService implements IFileService {
         await this._sqlServerRepository.saveMany(finalBatchToSave);
         processedInBatch += finalBatchToSave.length;
       } catch (error) {
-        winstonLogger.error(`Error al guardar el ${batchIdentifier} en la base de datos: ${error.message}`);
+        this._logger.error(`Error al guardar el ${batchIdentifier} en la base de datos: ${error.message}`, error.stack, FileService.name);
         errorsInBatch += finalBatchToSave.length; // Si falla el guardado, todos son errores
       }
     }
@@ -192,7 +194,7 @@ export class FileService implements IFileService {
 
     return client;
   } catch (error) {
-    winstonLogger.warn(`Error al parsear línea ${lineNumber}: ${line}. Mensaje: ${error.message}`);
+    this._logger.warn(`Error al parsear línea ${lineNumber}: ${line}. Mensaje: ${error.message}`, FileService.name);
     return null; // Retornar null para indicar que la línea no pudo ser parseada
   }
   }
@@ -208,8 +210,9 @@ export class FileService implements IFileService {
     const memoryUsage = process.memoryUsage();
     const heapUsedMb = (memoryUsage.heapUsed / 1024 / 1024).toFixed(2); // bytes a MB
 
-    winstonLogger.info(
-      `[Métricas] Líneas: ${currentLineNumber} | Procesados: ${totalProcessedRecords} | Errores: ${totalErrorRecords} | Tiempo: ${elapsedTimeMs}ms | Memoria: ${heapUsedMb} MB | CPU (User/System): ${cpuUserMs.toFixed(2)}ms/${cpuSystemMs.toFixed(2)}ms`
+    this._logger.info(
+      `[Métricas] Líneas: ${currentLineNumber} | Procesados: ${totalProcessedRecords} | Errores: ${totalErrorRecords} | Tiempo: ${elapsedTimeMs}ms | Memoria: ${heapUsedMb} MB | CPU (User/System): ${cpuUserMs.toFixed(2)}ms/${cpuSystemMs.toFixed(2)}ms`,
+      FileService.name
     );
   }
 
@@ -224,12 +227,12 @@ export class FileService implements IFileService {
     const memoryUsage = process.memoryUsage();
     const heapUsedMb = (memoryUsage.heapUsed / 1024 / 1024).toFixed(2);
 
-    winstonLogger.info(`--- Resumen Final ---`);
-    winstonLogger.info(`Total de líneas leídas: ${totalLines}`);
-    winstonLogger.info(`Registros procesados exitosamente: ${totalProcessedRecords}`);
-    winstonLogger.info(`Registros con error: ${totalErrorRecords}`);
-    winstonLogger.info(`Tiempo total de procesamiento: ${elapsedTimeMs}ms`);
-    winstonLogger.info(`Uso de Memoria (Heap): ${heapUsedMb} MB`);
-    winstonLogger.info(`Uso de CPU (User/System): ${cpuUserMs.toFixed(2)}ms/${cpuSystemMs.toFixed(2)}ms`);
+    this._logger.info(`--- Resumen Final ---`, FileService.name);
+    this._logger.info(`Total de líneas leídas: ${totalLines}`, FileService.name);
+    this._logger.info(`Registros procesados exitosamente: ${totalProcessedRecords}`, FileService.name);
+    this._logger.info(`Registros con error: ${totalErrorRecords}`, FileService.name);
+    this._logger.info(`Tiempo total de procesamiento: ${elapsedTimeMs}ms`, FileService.name);
+    this._logger.info(`Uso de Memoria (Heap): ${heapUsedMb} MB`, FileService.name);
+    this._logger.info(`Uso de CPU (User/System): ${cpuUserMs.toFixed(2)}ms/${cpuSystemMs.toFixed(2)}ms`, FileService.name);
   }
 }
