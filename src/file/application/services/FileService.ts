@@ -37,8 +37,8 @@ export class FileService implements IFileService {
 
     let batch: Client[] = [];
     let lineNumber = 0;
-    let processedRecords = 0;
-    let errorRecords = 0;
+    let totalProcessedRecords = 0;
+    let totalErrorRecords = 0;
 
     for await (const line of rl) {
       lineNumber++;
@@ -49,31 +49,85 @@ export class FileService implements IFileService {
       try {
         const client = this.parseClientLine(line, lineNumber);
         if(!client) {
+          totalErrorRecords++;
           continue;
         }
         batch.push(client);
 
         if (batch.length >= BATCH_SIZE) {
-          await this._sqlServerRepository.saveMany(batch);
-          processedRecords += batch.length;
+          const { processed, errors } = await this.processBatch(batch, lineNumber);
+          totalProcessedRecords += processed;
+          totalErrorRecords += errors;
           batch = [];
         }
       } catch (error) {
-        errorRecords++;
+        this.logger.error(`Error inesperado al procesar línea ${lineNumber}: ${error.message}`);
+        totalErrorRecords++;
       }
     }
 
     // Guardar cualquier registro restante en el último lote
     if (batch.length > 0) {
       try {
-        await this._sqlServerRepository.saveMany(batch);
-        processedRecords += batch.length;
+        const { processed, errors } = await this.processBatch(batch, lineNumber, true);
+        totalProcessedRecords += processed;
+        totalErrorRecords += errors;
       } catch (error) {
-        errorRecords += batch.length; // Si falla el lote final, todos son errores
+        this.logger.error(`Error inesperado al procesar el lote final: ${error.message}`);
+        totalErrorRecords += batch.length; // Si falla el lote final, todos son errores
       }
     }
 
-    this.logger.log(`Procesamiento finalizado. Total de líneas: ${lineNumber}. Registros procesados: ${processedRecords}. Registros con error: ${errorRecords}.`);
+    this.logger.log(`Procesamiento finalizado. Total de líneas: ${lineNumber}. Registros procesados: ${totalProcessedRecords}. Registros con error: ${totalErrorRecords}.`);
+  }
+
+  private async processBatch(batch: Client[], currentLineNumber: number, isFinalBatch: boolean = false): Promise<{ processed: number; errors: number }> {
+    let processedInBatch = 0;
+    let errorsInBatch = 0;
+    const batchIdentifier = isFinalBatch ? 'lote final' : `lote en línea ${currentLineNumber}`;
+
+    // 1. Filtrar duplicados dentro del mismo lote
+    const uniqueDnisInBatch = new Set<number>();
+    const batchWithoutInternalDuplicates = batch.filter(client => {
+      if (uniqueDnisInBatch.has(client.dni)) {
+        this.logger.warn(`DNI duplicado internamente en el ${batchIdentifier}: ${client.dni}.`);
+        errorsInBatch++;
+        return false;
+      }
+      uniqueDnisInBatch.add(client.dni);
+      return true;
+    });
+
+    // Si no quedan clientes después de filtrar duplicados internos, no hay nada más que hacer
+    if (batchWithoutInternalDuplicates.length === 0) {
+      return { processed: processedInBatch, errors: errorsInBatch };
+    }
+
+    // 2. Consultar la base de datos para encontrar DNIs ya existentes
+    const existingDnis = await this._sqlServerRepository.findExistingDnis(batchWithoutInternalDuplicates.map(client => client.dni));
+    const existingSet = new Set(existingDnis);
+
+    // 3. Filtrar los clientes que ya existen en la base de datos
+    const finalBatchToSave = batchWithoutInternalDuplicates.filter(client => !existingSet.has(client.dni));
+    const duplicatedInDbRecords = batchWithoutInternalDuplicates.length - finalBatchToSave.length;
+
+    if (duplicatedInDbRecords > 0) {
+      this.logger.warn(`Se omitieron ${duplicatedInDbRecords} registros con DNI duplicado en la base de datos en el ${batchIdentifier}.`);
+      errorsInBatch += duplicatedInDbRecords;
+    }
+
+    // 4. Guardar el lote final y limpio
+    if (finalBatchToSave.length > 0) {
+      try {
+        await this._sqlServerRepository.saveMany(finalBatchToSave);
+        processedInBatch += finalBatchToSave.length;
+      } catch (error) {
+        this.logger.error(`Error al guardar el ${batchIdentifier} en la base de datos: ${error.message}`);
+        errorsInBatch += finalBatchToSave.length; // Si falla el guardado, todos son errores
+      }
+    }
+
+    return { processed: processedInBatch, errors: errorsInBatch };
   }
 
   private parseClientLine(line: string, lineNumber: number): Client {

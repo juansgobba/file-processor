@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, In } from "typeorm"; // Importar 'In' para posibles usos futuros, aunque no directamente en saveMany
+import { Repository, In } from "typeorm";
 import { ISQLServerRepository } from "@/file/domain/interfaces/ISQLServerRepository";
 import { Client as ClientEntity } from "@/file/domain/entities/Client";
 import { Client as ClientSchema } from "./entities/Client.schema";
@@ -21,6 +21,14 @@ export class SQLServerRepository implements ISQLServerRepository {
       console.error("Error al guardar múltiples clientes:", error);
       throw new Error("Error al guardar múltiples clientes en la base de datos.");
     }
+  }
+
+  async findExistingDnis(dnis: number[]): Promise<number[]> {
+    const existingClients = await this._clientRepository.find({
+      where: { dni: In(dnis) },
+      select: ["dni"]
+    });
+    return existingClients.map(client => client.dni);
   }
 
   private toDomain(schema: ClientSchema): ClientEntity {
