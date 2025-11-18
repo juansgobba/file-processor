@@ -158,8 +158,8 @@ export class FileService implements IFileService {
 
     // Validación y conversión de FechaIngreso
     const dateParts = ingressAt.split('/');
-    if (dateParts.length !== 3) throw new Error(`Formato de fecha de ingreso incorrecto: "${ingressAt}". Se esperaba DD/MM/YYYY.`);
-    const [day, month, year] = dateParts.map(Number); // Cambiado a DD/MM/YYYY
+    if (dateParts.length !== 3) throw new Error(`Formato de fecha de ingreso incorrecto: "${ingressAt}". Se esperaba MM/DD/YYYY.`);
+    const [month, day, year] = dateParts.map(Number); // Cambiado a MM/DD/YYYY
 
     // Validación estricta de día, mes y año
     if (month < 1 || month > 12) throw new Error(`Mes inválido en la fecha de ingreso: "${ingressAt}". El mes debe estar entre 1 y 12.`);
