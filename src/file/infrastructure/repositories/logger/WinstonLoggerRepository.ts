@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { createLogger, format, transports, Logger as WinstonLoggerType } from 'winston';
+import {
+  createLogger,
+  format,
+  transports,
+  Logger as WinstonLoggerType,
+} from 'winston';
 import * as path from 'path';
 import { ILogger } from '@/file/domain/interfaces/ILogger';
 
@@ -24,9 +29,7 @@ export class WinstonLoggerRepository implements ILogger {
   constructor() {
     this.logger = createLogger({
       level: 'info', // Nivel mínimo global (para que los archivos capturen todo)
-      format: combine(
-        timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-      ),
+      format: combine(timestamp({ format: 'YYYY-MM-DD HH:mm:ss' })),
       transports: [
         new transports.Console({
           level: 'info', // Nivel mínimo para consola (el filtro se encarga de lo demás)

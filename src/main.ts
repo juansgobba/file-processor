@@ -7,7 +7,9 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('File Processor API')
-    .setDescription('API para procesar archivos de clientes y volcarlos a SQL Server.')
+    .setDescription(
+      'API para procesar archivos de clientes y volcarlos a SQL Server.',
+    )
     .setVersion('1.0')
     .build();
   const document = SwaggerModule.createDocument(app, config);

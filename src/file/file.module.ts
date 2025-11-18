@@ -6,7 +6,6 @@ import { FileService } from './application/services/FileService';
 import { SQLServerRepository } from './infrastructure/repositories/SQLServer/SQLServerRepository';
 import { entities } from './infrastructure/repositories/SQLServer/entities/_index';
 import { WinstonLoggerRepository } from './infrastructure/repositories/logger/WinstonLoggerRepository'; // Importar el nuevo logger
-import { ILogger } from './domain/interfaces/ILogger'; // Importar la interfaz del logger
 
 @Module({
   imports: [TypeOrmModule.forFeature([...entities])],
@@ -21,7 +20,7 @@ import { ILogger } from './domain/interfaces/ILogger'; // Importar la interfaz d
       useClass: SQLServerRepository,
     },
     {
-      provide: TYPES.ILogger, // Registrar el nuevo logger
+      provide: TYPES.ILogger,
       useClass: WinstonLoggerRepository,
     },
   ],
@@ -35,7 +34,7 @@ import { ILogger } from './domain/interfaces/ILogger'; // Importar la interfaz d
       useClass: SQLServerRepository,
     },
     {
-      provide: TYPES.ILogger, // Exportar el logger para que otros módulos puedan usarlo
+      provide: TYPES.ILogger,
       useClass: WinstonLoggerRepository,
     },
   ],

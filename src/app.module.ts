@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config'; // Importar ConfigModule y ConfigService
-import TYPES from './types';
 import { AppController } from './app.controller';
 import { FileModule } from './file/file.module';
 
