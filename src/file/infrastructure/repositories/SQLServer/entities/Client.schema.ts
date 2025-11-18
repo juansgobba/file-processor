@@ -1,7 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, DeleteDateColumn } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 
-@Entity({ name: "clients", schema: `${process.env.DB_SCHEMA}` })
+@Entity({ name: "clients" })
 export class Client {
   @PrimaryGeneratedColumn({ type: "int" })
   id: number;

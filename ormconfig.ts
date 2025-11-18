@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { DataSource } from "typeorm";
-import "dotenv/config";
+import * as dotenv from "dotenv"; // Importar dotenv
+dotenv.config({ path: '.env' }); // Cargar variables de entorno explícitamente
 import { entities } from "@/file/infrastructure/repositories/SQLServer/entities/_index";
 
 export const AppDataSource = new DataSource({
