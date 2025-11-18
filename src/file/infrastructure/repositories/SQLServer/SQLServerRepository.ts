@@ -12,17 +12,6 @@ export class SQLServerRepository implements ISQLServerRepository {
     private readonly _clientRepository: Repository<ClientSchema>,
   ) {}
 
-  async save(clientEntity: ClientEntity): Promise<ClientEntity> {
-    try {
-      const clientSchema = this.toSchema(clientEntity);
-      const savedClient = await this._clientRepository.save(clientSchema);
-      return this.toDomain(savedClient);
-    } catch (error) {
-      console.error("Error al guardar cliente:", error);
-      throw new Error("Error al guardar cliente en la base de datos.");
-    }
-  }
-
   async saveMany(clientEntities: ClientEntity[]): Promise<void> {
     try {
       const clientSchemas = clientEntities.map((entity) => this.toSchema(entity));

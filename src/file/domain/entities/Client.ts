@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 
 export class Client {
-  id?: number;
+  id: number;
   guid: string;
   fullName: string;
   dni: number;
@@ -9,7 +9,7 @@ export class Client {
   ingressAt: Date;
   isPEP: boolean;
   isObligateSubject: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
-  deletedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date;
 }
