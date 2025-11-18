@@ -4,6 +4,7 @@ import { Repository, In } from "typeorm";
 import { ISQLServerRepository } from "@/file/domain/interfaces/ISQLServerRepository";
 import { Client as ClientEntity } from "@/file/domain/entities/Client";
 import { Client as ClientSchema } from "./entities/Client.schema";
+import { winstonLogger } from "@/file/infrastructure/repositories/logger/winston.logger"; // Importar el logger
 
 @Injectable()
 export class SQLServerRepository implements ISQLServerRepository {
@@ -13,13 +14,33 @@ export class SQLServerRepository implements ISQLServerRepository {
   ) {}
 
   async saveMany(clientEntities: ClientEntity[]): Promise<void> {
+    const clientSchemas = clientEntities.map((entity) => this.toSchema(entity));
+
     try {
-      const clientSchemas = clientEntities.map((entity) => this.toSchema(entity));
-      // TypeORM maneja la inserción masiva de forma eficiente con .save() cuando se le pasa un array
-      await this._clientRepository.save(clientSchemas, { chunk: 1000 }); // chunk para optimizar la inserción
+      // Intento de inserción masiva
+      await this._clientRepository.save(clientSchemas, { chunk: 1000 });
     } catch (error) {
-      console.error("Error al guardar múltiples clientes:", error);
-      throw new Error("Error al guardar múltiples clientes en la base de datos.");
+      // Si falla la inserción masiva, intentamos uno por uno para identificar el error específico
+      winstonLogger.warn(`Fallo la inserción masiva de ${clientSchemas.length} clientes. Intentando insertar uno por uno.`);
+      
+      for (const clientSchema of clientSchemas) {
+        try {
+          await this._clientRepository.save(clientSchema);
+        } catch (individualError) {
+          // Verificar si es un error de clave duplicada (código 2627 para SQL Server)
+          if (individualError.code === 'EREQUEST' && individualError.number === 2627) {
+            winstonLogger.warn(
+              `Error al guardar cliente (DNI: ${clientSchema.dni}, Nombre: ${clientSchema.fullName}). Razón: DNI duplicado. Este registro fue omitido.`
+            );
+          } else {
+            // Otros errores inesperados al guardar un cliente individual
+            winstonLogger.error(
+              `Error inesperado al guardar cliente (DNI: ${clientSchema.dni}, Nombre: ${clientSchema.fullName}). Razón: ${individualError.message}`
+            );
+          }
+        }
+      }
+      // No relanzamos el error original del lote para permitir que el proceso continúe
     }
   }
 

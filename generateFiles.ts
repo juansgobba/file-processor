@@ -3,7 +3,7 @@ import path from 'path';
 import { faker } from '@faker-js/faker';
 
 const FILE_PATH = path.resolve(__dirname, '../file-processor/CLIENTES_IN_0425.dat');
-const RECORDS = 50000;
+const RECORDS = 100;
 const ERROR_RATE = 0.2; // 20% de líneas con errores intencionales, puedes modificarlo para tus pruebas.
 
 // Asegurarse de que el directorio exista

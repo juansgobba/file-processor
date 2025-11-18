@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import * as fs from "fs";
 import * as readline from "readline";
 import * as path from "path";
@@ -6,6 +6,7 @@ import TYPES from "@/types";
 import { IFileService } from "./IFileService";
 import { ISQLServerRepository } from "@/file/domain/interfaces/ISQLServerRepository";
 import { Client } from "@/file/domain/entities/Client";
+import { winstonLogger } from "@/file/infrastructure/repositories/logger/winston.logger"; // Importar el logger único
 
 const INPUT_FILE_PATH = path.join(process.cwd(), "CLIENTES_IN_0425.dat"); // Ruta del archivo de entrada
 const BATCH_SIZE = 200; // Tamaño del lote para inserciones masivas
@@ -13,7 +14,7 @@ const BATCH_SIZE = 200; // Tamaño del lote para inserciones masivas
 @Injectable()
 export class FileService implements IFileService {
   private readonly _sqlServerRepository: ISQLServerRepository;
-  private readonly logger = new Logger(FileService.name);
+  // private readonly logger = new Logger(FileService.name); // Ya no necesitamos el logger de NestJS directamente aquí
 
   constructor(
     @Inject(TYPES.ISQLServerRepository) sqlServerRepository: ISQLServerRepository,
@@ -22,10 +23,13 @@ export class FileService implements IFileService {
   }
 
   async processFile(): Promise<void> {
-    this.logger.log(`Iniciando procesamiento del archivo: ${INPUT_FILE_PATH}`);
+    const startTime = process.hrtime.bigint();
+    const startCpuUsage = process.cpuUsage();
+
+    winstonLogger.info(`Iniciando procesamiento del archivo: ${INPUT_FILE_PATH}`);
 
     if (!fs.existsSync(INPUT_FILE_PATH)) {
-      this.logger.error(`El archivo de entrada no existe: ${INPUT_FILE_PATH}`);
+      winstonLogger.error(`El archivo de entrada no existe: ${INPUT_FILE_PATH}`);
       throw new Error("Archivo de entrada no encontrado.");
     }
 
@@ -39,6 +43,7 @@ export class FileService implements IFileService {
     let lineNumber = 0;
     let totalProcessedRecords = 0;
     let totalErrorRecords = 0;
+    let lastLoggedLine = 0; // Para controlar cuándo loguear el progreso
 
     for await (const line of rl) {
       lineNumber++;
@@ -59,9 +64,12 @@ export class FileService implements IFileService {
           totalProcessedRecords += processed;
           totalErrorRecords += errors;
           batch = [];
+
+          // Log de métricas de progreso
+          this.logProgressMetrics(startTime, startCpuUsage, totalProcessedRecords, totalErrorRecords, lineNumber);
         }
       } catch (error) {
-        this.logger.error(`Error inesperado al procesar línea ${lineNumber}: ${error.message}`);
+        winstonLogger.error(`Error inesperado al procesar línea ${lineNumber}: ${error.message}`);
         totalErrorRecords++;
       }
     }
@@ -73,12 +81,13 @@ export class FileService implements IFileService {
         totalProcessedRecords += processed;
         totalErrorRecords += errors;
       } catch (error) {
-        this.logger.error(`Error inesperado al procesar el lote final: ${error.message}`);
+        winstonLogger.error(`Error inesperado al procesar el lote final: ${error.message}`);
         totalErrorRecords += batch.length; // Si falla el lote final, todos son errores
       }
     }
 
-    this.logger.log(`Procesamiento finalizado. Total de líneas: ${lineNumber}. Registros procesados: ${totalProcessedRecords}. Registros con error: ${totalErrorRecords}.`);
+    // Log de métricas finales
+    this.logFinalMetrics(startTime, startCpuUsage, totalProcessedRecords, totalErrorRecords, lineNumber);
   }
 
   private async processBatch(batch: Client[], currentLineNumber: number, isFinalBatch: boolean = false): Promise<{ processed: number; errors: number }> {
@@ -90,7 +99,7 @@ export class FileService implements IFileService {
     const uniqueDnisInBatch = new Set<number>();
     const batchWithoutInternalDuplicates = batch.filter(client => {
       if (uniqueDnisInBatch.has(client.dni)) {
-        this.logger.warn(`DNI duplicado internamente en el ${batchIdentifier}: ${client.dni}.`);
+        winstonLogger.warn(`DNI duplicado internamente en el ${batchIdentifier}: ${client.dni}.`);
         errorsInBatch++;
         return false;
       }
@@ -112,7 +121,7 @@ export class FileService implements IFileService {
     const duplicatedInDbRecords = batchWithoutInternalDuplicates.length - finalBatchToSave.length;
 
     if (duplicatedInDbRecords > 0) {
-      this.logger.warn(`Se omitieron ${duplicatedInDbRecords} registros con DNI duplicado en la base de datos en el ${batchIdentifier}.`);
+      winstonLogger.warn(`Se omitieron ${duplicatedInDbRecords} registros con DNI duplicado en la base de datos en el ${batchIdentifier}.`);
       errorsInBatch += duplicatedInDbRecords;
     }
 
@@ -122,7 +131,7 @@ export class FileService implements IFileService {
         await this._sqlServerRepository.saveMany(finalBatchToSave);
         processedInBatch += finalBatchToSave.length;
       } catch (error) {
-        this.logger.error(`Error al guardar el ${batchIdentifier} en la base de datos: ${error.message}`);
+        winstonLogger.error(`Error al guardar el ${batchIdentifier} en la base de datos: ${error.message}`);
         errorsInBatch += finalBatchToSave.length; // Si falla el guardado, todos son errores
       }
     }
@@ -183,8 +192,44 @@ export class FileService implements IFileService {
 
     return client;
   } catch (error) {
-    this.logger.warn(`Error al parsear línea ${lineNumber}: ${line}. Mensaje: ${error.message}`);
+    winstonLogger.warn(`Error al parsear línea ${lineNumber}: ${line}. Mensaje: ${error.message}`);
     return null; // Retornar null para indicar que la línea no pudo ser parseada
   }
+  }
+
+  private logProgressMetrics(startTime: bigint, startCpuUsage: NodeJS.CpuUsage, totalProcessedRecords: number, totalErrorRecords: number, currentLineNumber: number): void {
+    const elapsedHrTime = process.hrtime.bigint() - startTime;
+    const elapsedTimeMs = Number(elapsedHrTime / 1_000_000n); // Convertir a milisegundos
+
+    const currentCpuUsage = process.cpuUsage(startCpuUsage);
+    const cpuUserMs = currentCpuUsage.user / 1000; // microsegundos a milisegundos
+    const cpuSystemMs = currentCpuUsage.system / 1000; // microsegundos a milisegundos
+
+    const memoryUsage = process.memoryUsage();
+    const heapUsedMb = (memoryUsage.heapUsed / 1024 / 1024).toFixed(2); // bytes a MB
+
+    winstonLogger.info(
+      `[Métricas] Líneas: ${currentLineNumber} | Procesados: ${totalProcessedRecords} | Errores: ${totalErrorRecords} | Tiempo: ${elapsedTimeMs}ms | Memoria: ${heapUsedMb} MB | CPU (User/System): ${cpuUserMs.toFixed(2)}ms/${cpuSystemMs.toFixed(2)}ms`
+    );
+  }
+
+  private logFinalMetrics(startTime: bigint, startCpuUsage: NodeJS.CpuUsage, totalProcessedRecords: number, totalErrorRecords: number, totalLines: number): void {
+    const elapsedHrTime = process.hrtime.bigint() - startTime;
+    const elapsedTimeMs = Number(elapsedHrTime / 1_000_000n);
+
+    const finalCpuUsage = process.cpuUsage(startCpuUsage);
+    const cpuUserMs = finalCpuUsage.user / 1000;
+    const cpuSystemMs = finalCpuUsage.system / 1000;
+
+    const memoryUsage = process.memoryUsage();
+    const heapUsedMb = (memoryUsage.heapUsed / 1024 / 1024).toFixed(2);
+
+    winstonLogger.info(`--- Resumen Final ---`);
+    winstonLogger.info(`Total de líneas leídas: ${totalLines}`);
+    winstonLogger.info(`Registros procesados exitosamente: ${totalProcessedRecords}`);
+    winstonLogger.info(`Registros con error: ${totalErrorRecords}`);
+    winstonLogger.info(`Tiempo total de procesamiento: ${elapsedTimeMs}ms`);
+    winstonLogger.info(`Uso de Memoria (Heap): ${heapUsedMb} MB`);
+    winstonLogger.info(`Uso de CPU (User/System): ${cpuUserMs.toFixed(2)}ms/${cpuSystemMs.toFixed(2)}ms`);
   }
 }

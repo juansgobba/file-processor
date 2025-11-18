@@ -27,4 +27,4 @@ RUN mkdir -p challenge/input
 
 EXPOSE 3000
 
-CMD ["node", "dist/main"]
+CMD ["node", "--max-old-space-size=192", "dist/main"]
