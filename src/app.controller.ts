@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger'; // Importar decoradores de Swagger
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('Health') // Agrega una etiqueta para agrupar endpoints en Swagger UI
 @Controller('health')

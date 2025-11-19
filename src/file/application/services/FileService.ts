@@ -58,7 +58,6 @@ export class FileService implements IFileService {
     let lineNumber = 0;
     let totalProcessedRecords = 0;
     let totalErrorRecords = 0;
-    const lastLoggedLine = 0; // Para controlar cuándo loguear el progreso
 
     // Comienzo el procesamiento linea por linea
     for await (const line of rl) {

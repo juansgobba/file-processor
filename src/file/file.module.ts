@@ -5,7 +5,7 @@ import { FileController } from './infrastructure/controllers/FileController';
 import { FileService } from './application/services/FileService';
 import { SQLServerRepository } from './infrastructure/repositories/SQLServer/SQLServerRepository';
 import { entities } from './infrastructure/repositories/SQLServer/entities/_index';
-import { WinstonLoggerRepository } from './infrastructure/repositories/logger/WinstonLoggerRepository'; // Importar el nuevo logger
+import { WinstonLoggerRepository } from './infrastructure/repositories/logger/WinstonLoggerRepository';
 
 @Module({
   imports: [TypeOrmModule.forFeature([...entities])],

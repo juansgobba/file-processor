@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
   DeleteDateColumn,
   BeforeInsert,
-} from 'typeorm'; // Importar BeforeInsert
+} from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 
 @Entity({ name: 'clients' })
