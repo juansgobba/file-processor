@@ -15,6 +15,7 @@ export class SQLServerRepository implements ISQLServerRepository {
     @Inject(TYPES.ILogger) private readonly _logger: ILogger, // Inyectar el logger
   ) {}
 
+  // Hay que poner los logs de otra manera
   async saveMany(clientEntities: ClientEntity[]): Promise<void> {
     const clientSchemas = clientEntities.map((entity) => this.toSchema(entity));
 
@@ -55,6 +56,7 @@ export class SQLServerRepository implements ISQLServerRepository {
     }
   }
 
+  // Esto se puede mejorar
   async findExistingDnis(dnis: number[]): Promise<number[]> {
     const existingClients = await this._clientRepository.find({
       where: { dni: In(dnis) },

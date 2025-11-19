@@ -25,6 +25,7 @@ export class FileService implements IFileService {
     this._logger = logger;
   }
 
+  // Esto se puede mejorar
   async processFile(): Promise<void> {
     // Métricas iniciales
     const startTime = process.hrtime.bigint();
@@ -293,6 +294,7 @@ export class FileService implements IFileService {
     }
   }
 
+  // Esto se puede mandar al repositorio
   private logProgressMetrics(
     startTime: bigint,
     startCpuUsage: NodeJS.CpuUsage,
