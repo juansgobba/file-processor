@@ -1,6 +1,16 @@
 version: '3.8'
 
 services:
+  db-init:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: db_init
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./init.sql:/init.sql
+    command: /opt/mssql-tools18/bin/sqlcmd -S db -U sa -P "YourStrong@Password" -C -i /init.sql
+
   db:
     image: mcr.microsoft.com/mssql/server:2019-latest
     container_name: sqlserver_db
@@ -13,7 +23,7 @@ services:
       - sqlserver_data:/var/opt/mssql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "YourStrong@Password", "-Q", "SELECT 1"]
+      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "YourStrong@Password", "-C", "-Q", "SELECT 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -24,20 +34,21 @@ services:
       dockerfile: Dockerfile
     container_name: file_processor_app
     environment:
-      DATABASE_HOST: db
-      DATABASE_PORT: 1433
-      DATABASE_USERNAME: sa
-      DATABASE_PASSWORD: "YourStrong@Password" # ¡Cambia esto en producción!
-      DATABASE_NAME: file_processor_db
+      DB_HOST: db
+      DB_PORT: 1433
+      DB_USER: sa
+      DB_PASSWORD: "YourStrong@Password" # ¡Cambia esto en producción!
+      DB_NAME: file_processor_db
+      DB_SCHEMA: file_processor
     ports:
       - "3000:3000"
     depends_on:
-      db:
-        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     volumes:
       - .:/app
       - /app/node_modules # Evita que el node_modules local sobreescriba el del contenedor
-    command: npm run start:dev # Opcional: para desarrollo, si no se usa nodemon dentro del contenedor
+    command: sh -c "npm run typeorm:migration:run && npm run start:dev"
 
 volumes:
   sqlserver_data:
